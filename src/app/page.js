@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { auth, googleProvider } from '../../lib/firebase';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 
+// Force dynamic rendering - prevents static generation
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
