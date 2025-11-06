@@ -35,9 +35,13 @@ export default function GalleryNav() {
   }
 
   // Get preview images (first image from each gallery)
-  const referencePreview = userData?.referenceGalleryPics?.[0] || 'https://via.placeholder.com/400x300?text=No+Images';
-  const artworkPreview = userData?.artworkGalleryPics?.[0] || 'https://via.placeholder.com/400x300?text=No+Images';
-  const favoritesPreview = userData?.favoritesGalleryPics?.[0] || 'https://via.placeholder.com/400x300?text=No+Favorites';
+  const hasReferenceImages = userData?.referenceGalleryPics && userData.referenceGalleryPics.length > 0;
+  const hasArtworkImages = userData?.artworkGalleryPics && userData.artworkGalleryPics.length > 0;
+  const hasFavoritesImages = userData?.favoritesGalleryPics && userData.favoritesGalleryPics.length > 0;
+  
+  const referencePreview = hasReferenceImages ? userData.referenceGalleryPics[0] : "/imageIcon.png";
+  const artworkPreview = hasArtworkImages ? userData.artworkGalleryPics[0] : "/imageIcon.png";
+  const favoritesPreview = hasFavoritesImages ? userData.favoritesGalleryPics[0] : "/imageIcon.png";
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">

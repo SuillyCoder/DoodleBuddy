@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { auth, storage, db } from '../../../../../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { fetchUserData } from '../../../../../lib/mockData';
 import Link from 'next/link';
 
@@ -13,6 +13,7 @@ export default function ReferenceGallery() {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -22,7 +23,7 @@ export default function ReferenceGallery() {
         const data = await fetchUserData(currentUser.uid);
         setImages(data?.referenceGalleryPics || []);
       } else {
-        // Guest mode - load from localStorage
+        // Guest mode - load from localStorage (URLs only, no base64)
         const guestImages = localStorage.getItem('guest_reference_gallery');
         setImages(guestImages ? JSON.parse(guestImages) : []);
       }
@@ -33,57 +34,104 @@ export default function ReferenceGallery() {
     return () => unsubscribe();
   }, []);
 
+  // Compress image before upload
+  const compressImage = (file, maxWidth = 1920, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Resize if needed
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+          }, 'image/jpeg', quality);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
     setUploading(true);
+    setUploadProgress({ current: 0, total: files.length });
 
     try {
       if (user) {
-        // Authenticated user - upload to Firebase Storage
-        const uploadPromises = files.map(async (file) => {
-          const timestamp = Date.now();
-          const fileName = `${user.uid}/reference/${timestamp}_${file.name}`;
-          const storageRef = ref(storage, fileName);
-          
-          await uploadBytes(storageRef, file);
-          const downloadURL = await getDownloadURL(storageRef);
-          return downloadURL;
-        });
-
-        const uploadedURLs = await Promise.all(uploadPromises);
+        // Authenticated user - compress and upload to Firebase Storage in parallel
+        const uploadedURLs = [];
         
-        // Update Firestore
+        // Process in batches of 3 for optimal performance
+        const batchSize = 3;
+        for (let i = 0; i < files.length; i += batchSize) {
+          const batch = files.slice(i, i + batchSize);
+          
+          const batchPromises = batch.map(async (file, batchIndex) => {
+            try {
+              // Compress image first
+              const compressedFile = await compressImage(file);
+              
+              const timestamp = Date.now() + batchIndex;
+              const fileName = `${user.uid}/reference/${timestamp}_${file.name}`;
+              const storageRef = ref(storage, fileName);
+              
+              await uploadBytes(storageRef, compressedFile);
+              const downloadURL = await getDownloadURL(storageRef);
+              
+              setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
+              return downloadURL;
+            } catch (error) {
+              console.error(`Failed to upload ${file.name}:`, error);
+              return null;
+            }
+          });
+
+          const batchResults = await Promise.all(batchPromises);
+          uploadedURLs.push(...batchResults.filter(url => url !== null));
+        }
+        
+        // Update Firestore in one operation
         const userRef = doc(db, 'users', user.uid);
         await updateDoc(userRef, {
           referenceGalleryPics: arrayUnion(...uploadedURLs)
         });
 
         setImages([...images, ...uploadedURLs]);
-        alert('Images uploaded successfully!');
+        alert(`${uploadedURLs.length} image(s) uploaded successfully!`);
       } else {
-        // Guest mode - convert to base64 and store in localStorage
-        const readPromises = files.map((file) => {
-          return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(file);
-          });
-        });
-
-        const base64Images = await Promise.all(readPromises);
-        const updatedImages = [...images, ...base64Images];
+        // Guest mode - Store URLs as object URLs (temporary, no localStorage bloat)
+        alert('⚠️ Guest Mode: Images are temporary and will be lost on page refresh. Sign in to save permanently!');
         
-        setImages(updatedImages);
-        localStorage.setItem('guest_reference_gallery', JSON.stringify(updatedImages));
-        alert('Images saved locally (sign in to save permanently)');
+        const objectURLs = files.map(file => URL.createObjectURL(file));
+        setImages([...images, ...objectURLs]);
+        
+        // Don't store in localStorage to avoid quota issues
+        // Guest uploads are session-only
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload images. Please try again.');
+      alert('Failed to upload some images. Please try again.');
     } finally {
       setUploading(false);
+      setUploadProgress({ current: 0, total: 0 });
+      e.target.value = ''; // Reset file input
     }
   };
 
@@ -95,6 +143,14 @@ export default function ReferenceGallery() {
 
     try {
       const userRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+      const currentFavorites = userDoc.data()?.favoritesGalleryPics || [];
+      
+      if (currentFavorites.includes(imageUrl)) {
+        alert('Already in favorites!');
+        return;
+      }
+      
       await updateDoc(userRef, {
         favoritesGalleryPics: arrayUnion(imageUrl)
       });
@@ -124,6 +180,11 @@ export default function ReferenceGallery() {
           <div>
             <h1 className="text-4xl font-bold text-gray-900">Reference Gallery</h1>
             <p className="text-gray-600 mt-2">{images.length} images</p>
+            {!user && (
+              <p className="text-amber-600 text-sm mt-1">
+                ⚠️ Guest mode: Images are temporary. Sign in to save!
+              </p>
+            )}
           </div>
           
           {/* Upload Button */}
@@ -136,8 +197,14 @@ export default function ReferenceGallery() {
               className="hidden"
               disabled={uploading}
             />
-            <div className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium disabled:opacity-50">
-              {uploading ? 'Uploading...' : '+ Upload Images'}
+            <div className={`px-6 py-3 rounded-lg transition font-medium ${
+              uploading 
+                ? 'bg-gray-400 text-white cursor-not-allowed' 
+                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+            }`}>
+              {uploading 
+                ? `Uploading ${uploadProgress.current}/${uploadProgress.total}...` 
+                : '+ Upload Images'}
             </div>
           </label>
         </div>
