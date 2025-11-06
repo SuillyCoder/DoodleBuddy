@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { auth, storage, db } from '../../../../../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { fetchUserData } from '../../../../../lib/mockData';
 import Link from 'next/link';
 
@@ -14,6 +14,8 @@ export default function ArtworkGallery() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [previewImage, setPreviewImage] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -23,8 +25,8 @@ export default function ArtworkGallery() {
         const data = await fetchUserData(currentUser.uid);
         setImages(data?.artworkGalleryPics || []);
       } else {
-        // Guest mode - load from localStorage (URLs only, no base64)
-        const guestImages = localStorage.getItem('guest_artwork_gallery');
+        // Guest mode - load from sessionStorage
+        const guestImages = sessionStorage.getItem('guest_artwork_gallery');
         setImages(guestImages ? JSON.parse(guestImages) : []);
       }
       
@@ -34,7 +36,13 @@ export default function ArtworkGallery() {
     return () => unsubscribe();
   }, []);
 
-  // Compress image before upload
+  // Save guest images to sessionStorage
+  useEffect(() => {
+    if (!user && images.length > 0) {
+      sessionStorage.setItem('guest_artwork_gallery', JSON.stringify(images));
+    }
+  }, [images, user]);
+
   const compressImage = (file, maxWidth = 1920, quality = 0.8) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -45,7 +53,6 @@ export default function ArtworkGallery() {
           let width = img.width;
           let height = img.height;
 
-          // Resize if needed
           if (width > maxWidth) {
             height = (height * maxWidth) / width;
             width = maxWidth;
@@ -75,19 +82,15 @@ export default function ArtworkGallery() {
 
     try {
       if (user) {
-        // Authenticated user - compress and upload to Firebase Storage in parallel
         const uploadedURLs = [];
         
-        // Process in batches of 3 for optimal performance
         const batchSize = 3;
         for (let i = 0; i < files.length; i += batchSize) {
           const batch = files.slice(i, i + batchSize);
           
           const batchPromises = batch.map(async (file, batchIndex) => {
             try {
-              // Compress image first
               const compressedFile = await compressImage(file);
-              
               const timestamp = Date.now() + batchIndex;
               const fileName = `${user.uid}/artwork/${timestamp}_${file.name}`;
               const storageRef = ref(storage, fileName);
@@ -107,7 +110,6 @@ export default function ArtworkGallery() {
           uploadedURLs.push(...batchResults.filter(url => url !== null));
         }
         
-        // Update Firestore in one operation
         const userRef = doc(db, 'users', user.uid);
         await updateDoc(userRef, {
           artworkGalleryPics: arrayUnion(...uploadedURLs)
@@ -116,14 +118,11 @@ export default function ArtworkGallery() {
         setImages([...images, ...uploadedURLs]);
         alert(`${uploadedURLs.length} artwork(s) uploaded successfully!`);
       } else {
-        // Guest mode - Store URLs as object URLs (temporary, no localStorage bloat)
-        alert('⚠️ Guest Mode: Images are temporary and will be lost on page refresh. Sign in to save permanently!');
-        
         const objectURLs = files.map(file => URL.createObjectURL(file));
-        setImages([...images, ...objectURLs]);
-        
-        // Don't store in localStorage to avoid quota issues
-        // Guest uploads are session-only
+        const updatedImages = [...images, ...objectURLs];
+        setImages(updatedImages);
+        sessionStorage.setItem('guest_artwork_gallery', JSON.stringify(updatedImages));
+        alert(`${files.length} artwork(s) added! (Sign in to save permanently)`);
       }
     } catch (error) {
       console.error('Upload error:', error);
@@ -131,7 +130,39 @@ export default function ArtworkGallery() {
     } finally {
       setUploading(false);
       setUploadProgress({ current: 0, total: 0 });
-      e.target.value = ''; // Reset file input
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteImage = async (imageUrl, index) => {
+    try {
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        await updateDoc(userRef, {
+          artworkGalleryPics: arrayRemove(imageUrl)
+        });
+
+        try {
+          const imageRef = ref(storage, imageUrl);
+          await deleteObject(imageRef);
+        } catch (storageError) {
+          console.log('Could not delete from storage:', storageError);
+        }
+
+        setImages(images.filter((_, i) => i !== index));
+        alert('Artwork deleted successfully!');
+      } else {
+        const updatedImages = images.filter((_, i) => i !== index);
+        setImages(updatedImages);
+        sessionStorage.setItem('guest_artwork_gallery', JSON.stringify(updatedImages));
+        URL.revokeObjectURL(imageUrl);
+        alert('Artwork removed!');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete artwork');
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
@@ -182,12 +213,11 @@ export default function ArtworkGallery() {
             <p className="text-gray-600 mt-2">{images.length} artworks</p>
             {!user && (
               <p className="text-amber-600 text-sm mt-1">
-                ⚠️ Guest mode: Images are temporary. Sign in to save!
+                ⚠️ Guest mode: Images saved until refresh. Sign in for permanent storage!
               </p>
             )}
           </div>
           
-          {/* Upload Button */}
           <label className="cursor-pointer">
             <input
               type="file"
@@ -210,7 +240,7 @@ export default function ArtworkGallery() {
         </div>
       </div>
 
-      {/* Gallery Grid - 5 columns */}
+      {/* Gallery Grid */}
       <div className="max-w-7xl mx-auto">
         {images.length === 0 ? (
           <div className="text-center py-16">
@@ -220,22 +250,40 @@ export default function ArtworkGallery() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {images.map((imageUrl, index) => (
-              <div key={index} className="group relative aspect-square bg-gray-200 rounded-lg overflow-hidden">
+              <div 
+                key={index} 
+                className="group relative aspect-square bg-gray-200 rounded-lg overflow-hidden cursor-pointer"
+                onClick={() => setPreviewImage(imageUrl)}
+              >
                 <img
                   src={imageUrl}
                   alt={`Artwork ${index + 1}`}
                   className="w-full h-full object-cover"
                 />
                 
-                {/* Overlay with actions */}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                   <button
-                    onClick={() => handleFavorite(imageUrl)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFavorite(imageUrl);
+                    }}
                     className="p-2 bg-white rounded-full hover:bg-gray-100 transition"
                     title="Add to favorites"
                   >
                     <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteConfirm({ url: imageUrl, index });
+                    }}
+                    className="p-2 bg-white rounded-full hover:bg-red-50 transition"
+                    title="Delete artwork"
+                  >
+                    <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
                 </div>
@@ -244,6 +292,55 @@ export default function ArtworkGallery() {
           </div>
         )}
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition"
+          >
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={previewImage}
+            alt="Preview"
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Artwork?</h3>
+            <p className="text-gray-600 mb-6">
+              This action cannot be undone. Are you sure you want to delete this artwork?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteImage(deleteConfirm.url, deleteConfirm.index)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
