@@ -40,4 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+#Assets
 /New_Github_Pic.jpg
+artistAssets/

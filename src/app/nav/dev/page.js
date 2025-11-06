@@ -20,12 +20,14 @@ export default function DevPage() {
 
           {/* Content Section */}
           <div className="flex-1 flex flex-col justify-center">
-            <p className="text-gray-700 text-lg leading-relaxed mb-8">
-              Hey there! I'm the creator of DoodleBuddy, a passionate developer who loves building 
-              tools that bring creativity to life. I believe in the power of simple, intuitive 
-              design and the joy of creating something from nothing. Whether you're sketching 
-              your next masterpiece or just doodling for fun, I'm here to make your experience 
-              as smooth and enjoyable as possible.
+            <p className="text-gray-700 text-lg leading-relaxed mb-8 text-justify">
+              Heya there! I'm Enzo Basuil, or also known as 'SuillyCoder': the developer of DoodleBuddy. 
+              I made this app to help out artists and fellow creatives in combatting artblock and getting
+              some inspiration from the get-go. As a fellow artist, I know how it feels to beat your head 
+              against the wall not knowing what to draw, so I thought I'd make this app to help me and 
+              fellow artists out there make things a little easier! Of course, this app is far from perfect,
+              and as such, I'd like to hear your thoughts on how to make it better, for all artists out there.
+              Any feedback is appreciated! 
             </p>
 
             <a
