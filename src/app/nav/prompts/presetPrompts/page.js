@@ -2,21 +2,24 @@
 
 import { useState } from 'react';
 
+const themes = ['PIRATE', 'ANIME', 'SCI-FI', 'FANTASY', 'HORROR', 'NATURE'];
+const initialIndex = themes.indexOf('ANIME') !== -1 ? themes.indexOf('ANIME') : 0;
+
 export default function PresetPromptsPage() {
   const [selectedTheme, setSelectedTheme] = useState('ANIME');
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [currentThemeIndex, setCurrentThemeIndex] = useState(1);
-
-  const themes = ['PIRATE', 'ANIME', 'SCI-FI', 'FANTASY', 'HORROR', 'NATURE'];
+  const [currentThemeIndex, setCurrentThemeIndex] = useState(initialIndex);
 
   const scrollThemes = (direction) => {
-    if (direction === 'left') {
-      setCurrentThemeIndex((prev) => (prev === 0 ? themes.length - 1 : prev - 1));
-    } else {
-      setCurrentThemeIndex((prev) => (prev === themes.length - 1 ? 0 : prev + 1));
-    }
-    setSelectedTheme(themes[currentThemeIndex]);
+    setCurrentThemeIndex((prev) => {
+      const newIndex =
+        direction === 'left'
+          ? (prev === 0 ? themes.length - 1 : prev - 1)
+          : (prev === themes.length - 1 ? 0 : prev + 1);
+      setSelectedTheme(themes[newIndex]);
+      return newIndex;
+    });
   };
 
   const generatePrompt = async () => {
@@ -52,7 +55,7 @@ export default function PresetPromptsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-purple-50 flex flex-col items-center justify-center p-4">
       <div className="max-w-3xl w-full">
         {/* Header */}
         <div className="text-center mb-8">

@@ -6,7 +6,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export async function POST(request) {
   try {
-    const { messages } = await request.json();
+    const { messages, chatId, userId } = await request.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -15,8 +15,36 @@ export async function POST(request) {
       );
     }
 
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 401 }
+      );
+    }
+
     // Initialize the model
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+    // FIXED: Generate title only if this is the first USER message
+    let title = null;
+    const userMessages = messages.filter(msg => msg.role === 'user');
+    
+    if (userMessages.length === 1) {
+      const firstUserMessage = userMessages[0].content;
+      const titlePrompt = `Generate a very short, descriptive title (2-4 words max) for an art discussion that starts with this message: "${firstUserMessage}". 
+      The title should be concise and relevant to the art topic being discussed. 
+      Respond with ONLY the title, no extra text, quotes, or punctuation at the end.`;
+
+      try {
+        const titleResult = await model.generateContent(titlePrompt);
+        const titleResponse = await titleResult.response;
+        title = titleResponse.text().trim().replace(/['"]/g, ''); // Remove quotes if any
+        console.log('✅ Generated title:', title); // Debug log
+      } catch (titleError) {
+        console.error('Error generating title:', titleError);
+        // Continue without title if generation fails
+      }
+    }
 
     // Create system prompt for the AI assistant
     const systemPrompt = `You are a creative and enthusiastic drawing prompt assistant for DoodleBuddy. Your role is to:
@@ -26,8 +54,16 @@ export async function POST(request) {
 3. Suggest techniques, styles, or themes to explore
 4. Be encouraging and supportive of their artistic journey
 5. Keep responses concise (2-4 sentences) unless the user asks for more detail
+6. When generating prompts, be specific with visual details, mood, composition, and style
 
-Always be friendly, creative, and focus on visual art and drawing. If users ask about non-drawing topics, gently redirect them back to art-related discussions.`;
+Always be friendly, creative, and focus on visual art and drawing. If users ask about non-drawing topics, gently redirect them back to art-related discussions.
+
+Example responses:
+- User: "I want to draw something fantasy"
+  Assistant: "How about drawing a mystical forest guardian - a deer with glowing antlers standing in a moonlit clearing, surrounded by floating orbs of light and ancient runes carved into the trees? You could use soft blues and purples for the magical atmosphere!"
+
+- User: "Give me a character idea"
+  Assistant: "Try sketching a steampunk inventor with goggles perched on their forehead, wild hair full of pencils and tools, and mechanical wings folded behind them. Add details like brass gears, leather straps, and blueprints tucked in their vest pockets!"`;
 
     // Format conversation history for Gemini
     const conversationHistory = messages
@@ -44,7 +80,12 @@ Always be friendly, creative, and focus on visual art and drawing. If users ask 
     const response = await result.response;
     const aiMessage = response.text().trim();
 
-    return NextResponse.json({ message: aiMessage });
+    // Return the AI response with title
+    return NextResponse.json({ 
+      message: aiMessage,
+      chatId: chatId,
+      title: title // Will be null if not first message
+    });
   } catch (error) {
     console.error('Error in chat prompts:', error);
 
@@ -60,6 +101,13 @@ Always be friendly, creative, and focus on visual art and drawing. If users ask 
       return NextResponse.json(
         { error: 'API usage limit reached. Please try again later.' },
         { status: 429 }
+      );
+    }
+
+    if (error.message?.includes('safety')) {
+      return NextResponse.json(
+        { error: 'Your message was flagged by content filters. Please rephrase and try again.' },
+        { status: 400 }
       );
     }
 

@@ -22,11 +22,14 @@ export async function POST(request) {
     const prompt = `Generate a creative and specific drawing prompt for the theme: ${theme}. 
     
 The prompt should be:
-- Detailed and inspiring
+- Simple and easy to work with.
+- Keep the vocabulary simple.
 - Include specific elements, mood, or style suggestions
-- Be between 15-30 words
+- Be between 10-15 words
 - Be suitable for artists of all levels
 - Focus on visual elements
+- Keep the prompt to a single statement if possible
+- Make all the prompts start with "Draw a / an..."
 
 Just provide the drawing prompt text without any additional explanation or formatting.`;
 
