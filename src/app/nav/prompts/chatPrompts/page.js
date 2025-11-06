@@ -29,6 +29,16 @@ export default function ChatPromptsPage() {
       setUser(currentUser);
       if (currentUser) {
         loadChatThreads(currentUser.uid);
+      } else {
+        // Guest mode - start with welcome message
+        if (messages.length === 0) {
+          setMessages([
+            {
+              role: 'assistant',
+              content: "Hi! I'm your creative drawing assistant. Tell me what you'd like to draw, and I'll help you come up with inspiring prompts and ideas! 🎨\n\n⚠️ Guest Mode: Your conversation won't be saved. Sign in to save chat history!",
+            },
+          ]);
+        }
       }
     });
     return () => unsubscribe();
@@ -57,7 +67,14 @@ export default function ChatPromptsPage() {
   // Create new chat
   const createNewChat = async () => {
     if (!user) {
-      alert('Please sign in to save chat history');
+      // Guest mode - just reset messages
+      setMessages([
+        {
+          role: 'assistant',
+          content: "Hi! I'm your creative drawing assistant. Tell me what you'd like to draw, and I'll help you come up with inspiring prompts and ideas! 🎨\n\n⚠️ Guest Mode: Your conversation won't be saved. Sign in to save chat history!",
+        },
+      ]);
+      setCurrentChatId(null);
       return;
     }
 
@@ -111,80 +128,80 @@ export default function ChatPromptsPage() {
 
   // Send message
   const sendMessage = async (e) => {
-  e.preventDefault();
-  if (!input.trim() || isLoading) return;
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
 
-  if (!user) {
-    alert('Please sign in to use the chat feature');
-    return;
-  }
+    const userMessage = input.trim();
+    setInput('');
 
-  if (!currentChatId) {
-    await createNewChat();
-    setTimeout(() => sendMessage(e), 500);
-    return;
-  }
+    const newMessages = [...messages, { role: 'user', content: userMessage }];
+    setMessages(newMessages);
+    setIsLoading(true);
 
-  const userMessage = input.trim();
-  setInput('');
+    try {
+      const response = await fetch('/api/prompts/chatPrompts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: newMessages,
+          chatId: currentChatId,
+          userId: user?.uid || 'guest',
+        }),
+      });
 
-  const newMessages = [...messages, { role: 'user', content: userMessage }];
-  setMessages(newMessages);
-  setIsLoading(true);
+      const data = await response.json();
 
-  try {
-    const response = await fetch('/api/prompts/chatPrompts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messages: newMessages,
-        chatId: currentChatId,
-        userId: user.uid,
-      }),
-    });
+      if (response.ok) {
+        const updatedMessages = [
+          ...newMessages,
+          { role: 'assistant', content: data.message },
+        ];
+        setMessages(updatedMessages);
 
-    const data = await response.json();
+        // Only update Firestore if user is signed in
+        if (user && currentChatId) {
+          const chatRef = doc(db, 'chatThreads', currentChatId);
+          const updates = {
+            messages: updatedMessages,
+            updatedAt: serverTimestamp(),
+          };
 
-    if (response.ok) {
-      const updatedMessages = [
-        ...newMessages,
-        { role: 'assistant', content: data.message },
-      ];
-      setMessages(updatedMessages);
+          const userMessagesCount = updatedMessages.filter(msg => msg.role === 'user').length;
+          
+          if (userMessagesCount === 1 && data.title) {
+            updates.title = data.title;
+          }
 
-      // Update Firestore with new messages and potentially new title
-      const chatRef = doc(db, 'chatThreads', currentChatId);
-      const updates = {
-        messages: updatedMessages,
-        updatedAt: serverTimestamp(),
-      };
-
-      // FIXED: Check if this is the first user message after the welcome message
-      // Welcome message (1) + first user message (2) + AI response (3) = 3 total
-      // Count only user messages to determine if this is the first one
-      const userMessagesCount = updatedMessages.filter(msg => msg.role === 'user').length;
-      
-      if (userMessagesCount === 1 && data.title) {
-        updates.title = data.title;
-        console.log('✅ Setting chat title:', data.title); // Debug log
+          await updateDoc(chatRef, updates);
+          await loadChatThreads(user.uid);
+        } else if (user && !currentChatId) {
+          // Signed in but no chat ID - create one retroactively
+          const newChat = {
+            userId: user.uid,
+            title: data.title || 'New Chat',
+            messages: updatedMessages,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          };
+          const docRef = await addDoc(collection(db, 'chatThreads'), newChat);
+          setCurrentChatId(docRef.id);
+          await loadChatThreads(user.uid);
+        }
+        // Guest mode: messages stay in memory only
+      } else {
+        alert(data.error || 'Failed to get response');
+        setMessages(messages);
       }
-
-      await updateDoc(chatRef, updates);
-      await loadChatThreads(user.uid);
-    } else {
-      alert(data.error || 'Failed to get response');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Failed to send message. Please try again.');
       setMessages(messages);
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Error sending message:', error);
-    alert('Failed to send message. Please try again.');
-    setMessages(messages);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex">
@@ -208,9 +225,20 @@ export default function ChatPromptsPage() {
             Chat History
           </h3>
           {!user ? (
-            <p className="text-sm text-gray-500 text-center py-8">
-              Sign in to save chat history
-            </p>
+            <div className="text-center py-8">
+              <p className="text-sm text-gray-500 mb-3">
+                💬 Currently in Guest Mode
+              </p>
+              <p className="text-xs text-gray-400 mb-4">
+                Sign in to save your conversations
+              </p>
+              <a
+                href="/"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Go to Home →
+              </a>
+            </div>
           ) : chatThreads.length === 0 ? (
             <p className="text-sm text-gray-500 text-center py-8">
               No chats yet. Start a new one!
@@ -264,7 +292,10 @@ export default function ChatPromptsPage() {
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Chat Prompts</h1>
-                <p className="text-sm text-gray-600">AI-powered drawing inspiration</p>
+                <p className="text-sm text-gray-600">
+                  AI-powered drawing inspiration
+                  {!user && <span className="text-amber-600 ml-2">• Guest Mode</span>}
+                </p>
               </div>
             </div>
             <a
@@ -279,101 +310,70 @@ export default function ChatPromptsPage() {
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto p-4">
           <div className="max-w-4xl mx-auto">
-            {!currentChatId && user ? (
-              <div className="text-center py-20">
-                <div className="text-6xl mb-4">💬</div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Start a New Chat
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Ask me anything about drawing prompts and creative ideas!
-                </p>
-                <button
-                  onClick={createNewChat}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+            <div className="space-y-4">
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
                 >
-                  Start Chatting
-                </button>
-              </div>
-            ) : !user ? (
-              <div className="text-center py-20">
-                <div className="text-6xl mb-4">🔒</div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Sign In Required
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Please sign in to use the chat feature and save your conversations
-                </p>
-                <a
-                  href="/"
-                  className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-                >
-                  Go to Home
-                </a>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {messages.map((message, index) => (
                   <div
-                    key={index}
-                    className={`flex ${
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
+                    className={`max-w-[80%] rounded-2xl px-6 py-4 ${
+                      message.role === 'user'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-900 shadow-md'
                     }`}
                   >
-                    <div
-                      className={`max-w-[80%] rounded-2xl px-6 py-4 ${
-                        message.role === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-900 shadow-md'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{message.content}</p>
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  </div>
+                </div>
+              ))}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white text-gray-900 shadow-md rounded-2xl px-6 py-4">
+                    <div className="flex gap-2">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                     </div>
                   </div>
-                ))}
+                </div>
+              )}
 
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-white text-gray-900 shadow-md rounded-2xl px-6 py-4">
-                      <div className="flex gap-2">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div ref={messagesEndRef} />
-              </div>
-            )}
+              <div ref={messagesEndRef} />
+            </div>
           </div>
         </div>
 
         {/* Input Area */}
-        {currentChatId && user && (
-          <div className="bg-white border-t border-gray-200 p-4">
-            <form onSubmit={sendMessage} className="max-w-4xl mx-auto">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask for drawing ideas..."
-                  disabled={isLoading}
-                  className="flex-1 px-6 py-4 border-2 border-gray-300 rounded-full focus:outline-none focus:border-blue-500 disabled:bg-gray-100 text-lg text-gray-800"
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading || !input.trim()}
-                  className="px-8 py-4 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Send
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+        <div className="bg-white border-t border-gray-200 p-4">
+          <form onSubmit={sendMessage} className="max-w-4xl mx-auto">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask for drawing ideas..."
+                disabled={isLoading}
+                className="flex-1 px-6 py-4 border-2 border-gray-300 rounded-full focus:outline-none focus:border-blue-500 disabled:bg-gray-100 text-lg text-gray-800"
+              />
+              <button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                className="px-8 py-4 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Send
+              </button>
+            </div>
+            {!user && (
+              <p className="text-xs text-amber-600 mt-2 text-center">
+                💡 Sign in to save your chat history permanently
+              </p>
+            )}
+          </form>
+        </div>
       </div>
     </div>
   );

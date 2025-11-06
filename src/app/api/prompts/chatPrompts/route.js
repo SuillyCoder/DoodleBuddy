@@ -15,12 +15,8 @@ export async function POST(request) {
       );
     }
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 401 }
-      );
-    }
+    // Allow both authenticated users and guests
+    // Guests will have userId: 'guest'
 
     // Initialize the model
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
