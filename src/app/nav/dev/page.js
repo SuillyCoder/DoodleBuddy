@@ -1,6 +1,6 @@
 export default function DevPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-blue-50 flex flex-col items-center justify-center p-8">
       <div className="max-w-5xl w-full">
         <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-12 text-center">
           MEET THE DEV
@@ -8,7 +8,7 @@ export default function DevPage() {
         
         <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 md:gap-12">
           {/* Developer Image */}
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <div className="w-64 h-64 rounded-full overflow-hidden border-4 border-blue-100 shadow-lg">
               <img 
                 src="/New_Github_Pic.jpg"  
