@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { auth, storage, db } from '../../../../../lib/firebase';
+import { auth, db } from '../../../../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
-import { fetchUserData } from '../../../../../lib/mockData';
+import { fetchUserData } from '../../../../lib/mockData';
+import { uploadToCloudinary } from '../../../../lib/cloudinaryUpload';
 import Link from 'next/link';
 
 export default function ArtworkGallery() {
@@ -25,7 +25,6 @@ export default function ArtworkGallery() {
         const data = await fetchUserData(currentUser.uid);
         setImages(data?.artworkGalleryPics || []);
       } else {
-        // Guest mode - load from sessionStorage
         const guestImages = sessionStorage.getItem('guest_artwork_gallery');
         setImages(guestImages ? JSON.parse(guestImages) : []);
       }
@@ -36,42 +35,11 @@ export default function ArtworkGallery() {
     return () => unsubscribe();
   }, []);
 
-  // Save guest images to sessionStorage
   useEffect(() => {
     if (!user && images.length > 0) {
       sessionStorage.setItem('guest_artwork_gallery', JSON.stringify(images));
     }
   }, [images, user]);
-
-  const compressImage = (file, maxWidth = 1920, quality = 0.8) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          canvas.toBlob((blob) => {
-            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
-          }, 'image/jpeg', quality);
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  };
 
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
@@ -88,18 +56,11 @@ export default function ArtworkGallery() {
         for (let i = 0; i < files.length; i += batchSize) {
           const batch = files.slice(i, i + batchSize);
           
-          const batchPromises = batch.map(async (file, batchIndex) => {
+          const batchPromises = batch.map(async (file) => {
             try {
-              const compressedFile = await compressImage(file);
-              const timestamp = Date.now() + batchIndex;
-              const fileName = `${user.uid}/artwork/${timestamp}_${file.name}`;
-              const storageRef = ref(storage, fileName);
-              
-              await uploadBytes(storageRef, compressedFile);
-              const downloadURL = await getDownloadURL(storageRef);
-              
+              const imageUrl = await uploadToCloudinary(file, 'artwork', user.uid);
               setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
-              return downloadURL;
+              return imageUrl;
             } catch (error) {
               console.error(`Failed to upload ${file.name}:`, error);
               return null;
@@ -141,13 +102,6 @@ export default function ArtworkGallery() {
         await updateDoc(userRef, {
           artworkGalleryPics: arrayRemove(imageUrl)
         });
-
-        try {
-          const imageRef = ref(storage, imageUrl);
-          await deleteObject(imageRef);
-        } catch (storageError) {
-          console.log('Could not delete from storage:', storageError);
-        }
 
         setImages(images.filter((_, i) => i !== index));
         alert('Artwork deleted successfully!');
@@ -202,7 +156,6 @@ export default function ArtworkGallery() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      {/* Header */}
       <div className="max-w-7xl mx-auto mb-8">
         <Link href="/nav/gallery" className="text-indigo-600 hover:text-indigo-700 mb-4 inline-block">
           ← Back to Galleries
@@ -240,7 +193,6 @@ export default function ArtworkGallery() {
         </div>
       </div>
 
-      {/* Gallery Grid */}
       <div className="max-w-7xl mx-auto">
         {images.length === 0 ? (
           <div className="text-center py-16">
@@ -293,7 +245,6 @@ export default function ArtworkGallery() {
         )}
       </div>
 
-      {/* Image Preview Modal */}
       {previewImage && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
@@ -316,7 +267,6 @@ export default function ArtworkGallery() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full">

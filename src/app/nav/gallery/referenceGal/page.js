@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { auth, storage, db } from '../../../../../lib/firebase';
+import { auth, db } from '../../../../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
-import { fetchUserData } from '../../../../../lib/mockData';
+import { fetchUserData } from '../../../../lib/mockData';
+import { uploadToCloudinary } from '../../../../lib/cloudinaryUpload';
 import Link from 'next/link';
 
-export default function ArtworkGallery() {
+export default function ReferenceGallery() {
   const [user, setUser] = useState(null);
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,10 +23,9 @@ export default function ArtworkGallery() {
       
       if (currentUser) {
         const data = await fetchUserData(currentUser.uid);
-        setImages(data?.artworkGalleryPics || []);
+        setImages(data?.referenceGalleryPics || []);
       } else {
-        // Guest mode - load from sessionStorage
-        const guestImages = sessionStorage.getItem('guest_artwork_gallery');
+        const guestImages = sessionStorage.getItem('guest_reference_gallery');
         setImages(guestImages ? JSON.parse(guestImages) : []);
       }
       
@@ -36,42 +35,11 @@ export default function ArtworkGallery() {
     return () => unsubscribe();
   }, []);
 
-  // Save guest images to sessionStorage
   useEffect(() => {
     if (!user && images.length > 0) {
-      sessionStorage.setItem('guest_artwork_gallery', JSON.stringify(images));
+      sessionStorage.setItem('guest_reference_gallery', JSON.stringify(images));
     }
   }, [images, user]);
-
-  const compressImage = (file, maxWidth = 1920, quality = 0.8) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          canvas.toBlob((blob) => {
-            resolve(new File([blob], file.name, { type: 'image/jpeg' }));
-          }, 'image/jpeg', quality);
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  };
 
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
@@ -82,24 +50,19 @@ export default function ArtworkGallery() {
 
     try {
       if (user) {
+        // Authenticated user - upload to Cloudinary
         const uploadedURLs = [];
         
+        // Process in batches of 3
         const batchSize = 3;
         for (let i = 0; i < files.length; i += batchSize) {
           const batch = files.slice(i, i + batchSize);
           
-          const batchPromises = batch.map(async (file, batchIndex) => {
+          const batchPromises = batch.map(async (file) => {
             try {
-              const compressedFile = await compressImage(file);
-              const timestamp = Date.now() + batchIndex;
-              const fileName = `${user.uid}/artwork/${timestamp}_${file.name}`;
-              const storageRef = ref(storage, fileName);
-              
-              await uploadBytes(storageRef, compressedFile);
-              const downloadURL = await getDownloadURL(storageRef);
-              
+              const imageUrl = await uploadToCloudinary(file, 'reference', user.uid);
               setUploadProgress(prev => ({ ...prev, current: prev.current + 1 }));
-              return downloadURL;
+              return imageUrl;
             } catch (error) {
               console.error(`Failed to upload ${file.name}:`, error);
               return null;
@@ -110,19 +73,21 @@ export default function ArtworkGallery() {
           uploadedURLs.push(...batchResults.filter(url => url !== null));
         }
         
+        // Update Firestore
         const userRef = doc(db, 'users', user.uid);
         await updateDoc(userRef, {
-          artworkGalleryPics: arrayUnion(...uploadedURLs)
+          referenceGalleryPics: arrayUnion(...uploadedURLs)
         });
 
         setImages([...images, ...uploadedURLs]);
-        alert(`${uploadedURLs.length} artwork(s) uploaded successfully!`);
+        alert(`${uploadedURLs.length} image(s) uploaded successfully!`);
       } else {
+        // Guest mode - create object URLs
         const objectURLs = files.map(file => URL.createObjectURL(file));
         const updatedImages = [...images, ...objectURLs];
         setImages(updatedImages);
-        sessionStorage.setItem('guest_artwork_gallery', JSON.stringify(updatedImages));
-        alert(`${files.length} artwork(s) added! (Sign in to save permanently)`);
+        sessionStorage.setItem('guest_reference_gallery', JSON.stringify(updatedImages));
+        alert(`${files.length} image(s) added! (Sign in to save permanently)`);
       }
     } catch (error) {
       console.error('Upload error:', error);
@@ -137,30 +102,25 @@ export default function ArtworkGallery() {
   const handleDeleteImage = async (imageUrl, index) => {
     try {
       if (user) {
+        // Remove from Firestore
         const userRef = doc(db, 'users', user.uid);
         await updateDoc(userRef, {
-          artworkGalleryPics: arrayRemove(imageUrl)
+          referenceGalleryPics: arrayRemove(imageUrl)
         });
 
-        try {
-          const imageRef = ref(storage, imageUrl);
-          await deleteObject(imageRef);
-        } catch (storageError) {
-          console.log('Could not delete from storage:', storageError);
-        }
-
         setImages(images.filter((_, i) => i !== index));
-        alert('Artwork deleted successfully!');
+        alert('Image deleted successfully!');
       } else {
+        // Guest mode
         const updatedImages = images.filter((_, i) => i !== index);
         setImages(updatedImages);
-        sessionStorage.setItem('guest_artwork_gallery', JSON.stringify(updatedImages));
+        sessionStorage.setItem('guest_reference_gallery', JSON.stringify(updatedImages));
         URL.revokeObjectURL(imageUrl);
-        alert('Artwork removed!');
+        alert('Image removed!');
       }
     } catch (error) {
       console.error('Delete error:', error);
-      alert('Failed to delete artwork');
+      alert('Failed to delete image');
     } finally {
       setDeleteConfirm(null);
     }
@@ -202,15 +162,14 @@ export default function ArtworkGallery() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      {/* Header */}
       <div className="max-w-7xl mx-auto mb-8">
         <Link href="/nav/gallery" className="text-indigo-600 hover:text-indigo-700 mb-4 inline-block">
           ← Back to Galleries
         </Link>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900">Artwork Gallery</h1>
-            <p className="text-gray-600 mt-2">{images.length} artworks</p>
+            <h1 className="text-4xl font-bold text-gray-900">Reference Gallery</h1>
+            <p className="text-gray-600 mt-2">{images.length} images</p>
             {!user && (
               <p className="text-amber-600 text-sm mt-1">
                 ⚠️ Guest mode: Images saved until refresh. Sign in for permanent storage!
@@ -234,18 +193,17 @@ export default function ArtworkGallery() {
             }`}>
               {uploading 
                 ? `Uploading ${uploadProgress.current}/${uploadProgress.total}...` 
-                : '+ Upload Artwork'}
+                : '+ Upload Images'}
             </div>
           </label>
         </div>
       </div>
 
-      {/* Gallery Grid */}
       <div className="max-w-7xl mx-auto">
         {images.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-gray-500 text-lg mb-4">No artworks yet</p>
-            <p className="text-gray-400">Upload your completed artworks to showcase them!</p>
+            <p className="text-gray-500 text-lg mb-4">No images yet</p>
+            <p className="text-gray-400">Upload some reference images to get started!</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -257,7 +215,7 @@ export default function ArtworkGallery() {
               >
                 <img
                   src={imageUrl}
-                  alt={`Artwork ${index + 1}`}
+                  alt={`Reference ${index + 1}`}
                   className="w-full h-full object-cover"
                 />
                 
@@ -280,7 +238,7 @@ export default function ArtworkGallery() {
                       setDeleteConfirm({ url: imageUrl, index });
                     }}
                     className="p-2 bg-white rounded-full hover:bg-red-50 transition"
-                    title="Delete artwork"
+                    title="Delete image"
                   >
                     <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -293,7 +251,6 @@ export default function ArtworkGallery() {
         )}
       </div>
 
-      {/* Image Preview Modal */}
       {previewImage && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
@@ -316,13 +273,12 @@ export default function ArtworkGallery() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Artwork?</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Image?</h3>
             <p className="text-gray-600 mb-6">
-              This action cannot be undone. Are you sure you want to delete this artwork?
+              This action cannot be undone. Are you sure you want to delete this image?
             </p>
             <div className="flex gap-3">
               <button
