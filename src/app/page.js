@@ -116,7 +116,7 @@ export default function Home() {
           className="block w-full"
         >
           <button className="w-full py-4 px-8 bg-blue-600 text-white text-xl font-semibold rounded-full hover:bg-blue-700 transition shadow-lg">
-            PROMPTS
+            DRAWING PROMPTS
           </button>
         </a>
 
