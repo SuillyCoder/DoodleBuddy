@@ -45,12 +45,10 @@ This is because of the explicit difference in subjects. Please take note of this
 It should !!STRICTLY!! be noted that this difference should be observed for every 3 prompts after a certain subject
 has been generated.
 
-Ex: When "mermaid" has been used in a prompt, the next 3 prompts should NOT contain "mermaid" as a subject PLEASE FOLLOW THIS.
+Ex: When "mermaid" has been used in a prompt, the next 3 prompts should NOT contain "mermaid" as a subject 
+!! PLEASE STRICTLY FOLLOW THIS !! 
 
-In case you'd wanna come up with prompt ideas for the chosen themes, please refrain from simply generic concepts, and 
-explore other niche (but understandable) ideas within the theme to account for prompt diversity. 
-
-It should also be noted that the prompt should be CONSISTEN all throughout the given theme. 
+It should also be noted that the prompt should be CONSISTENT all throughout the given theme. 
 
 Ex: "A mermaid swimming through the ocean with a trident". <-- This is acceptable for the "Fantasy" theme given its coherent theme and setting.
 Ex: "A mermaid with a trident in the forest fighting goblins with swords" <-- This is NOT acceptable for the "Fantasy" theme as it mixes different settings and themes.
