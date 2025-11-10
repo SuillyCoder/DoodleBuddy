@@ -10,17 +10,17 @@ const artstationArtistsPool = [
   {
     name: 'Bastien Grivet',
     artstationUrl: 'https://www.artstation.com/grivetart',
-    imageUrl: '/artistAssets/artStation/Bastien_Grivet.jpg',
+    imageUrl: '/artistAssets/artStation/profilePreview/Bastien_Grivet.jpg',
   },
   {
     name: 'Magdalena Pagowska',
     artstationUrl: 'https://www.artstation.com/len-yan',
-    imageUrl: '/artistAssets/artStation/Magdalena_Pagowska.jpg',
+    imageUrl: '/artistAssets/artStation/profilePreview/Magdalena_Pagowska.jpg',
   },
   {
     name: 'Robbie Trevino',
     artstationUrl: 'https://www.artstation.com/robbietrevino',
-    imageUrl: '/artistAssets/artStation/Robbie_Trevino.jpg',
+    imageUrl: '/artistAssets/artStation/profilePreview/Robbie_Trevino.jpg',
   },
   {
     name: 'Atey Ghailan',
@@ -30,32 +30,32 @@ const artstationArtistsPool = [
   {
     name: 'Even Amundsen',
     artstationUrl: 'https://www.artstation.com/mischeviouslittleelf',
-    imageUrl: '/artistAssets/artStation/Even_Amundsen.jpg',
+    imageUrl: '/artistAssets/artStation/profilePreview/Even_Amundsen.jpg',
   },
   {
     name: 'Anna Podedworna',
     artstationUrl: 'https://www.artstation.com/akreon',
-    imageUrl: '/artistAssets/artStation/Anna_Podedworna.jpg',
+    imageUrl: '/artistAssets/artStation/profilePreview/Anna_Podedworna.jpg',
   },
   {
     name: 'Ian McQue',
     artstationUrl: 'https://www.instagram.com/ianmcque/?hl=en',
-    imageUrl: '/artistAssets/artStation/Ian_McQue.jpg',
+    imageUrl: '/artistAssets/artStation/profilePreview/Ian_McQue.jpg',
   },
   {
     name: 'Marta Nael',
     artstationUrl: 'https://www.artstation.com/martanael',
-    imageUrl: '/artistAssets/artStation/Marta_Nael.jpg',
+    imageUrl: '/artistAssets/artStation/profilePreview/Marta_Nael.jpg',
   },
   {
     name: 'Gediminas Pranckevicius',
     artstationUrl: 'https://www.artstation.com/gedomenas',
-    imageUrl: '/artistAssets/artStation/Gediminas_Pranckevicius.jpg',
+    imageUrl: '/artistAssets/artStation/profilePreview/Gediminas_Pranckevicius.jpg',
   },
   {
     name: 'Sergey Kolesov',
     artstationUrl: 'https://www.artstation.com/peleng',
-    imageUrl: '/artistAssets/artStation/Sergey_Kolesov.jpg',
+    imageUrl: '/artistAssets/artStation/profilePreview/Sergey_Kolesov.jpg',
   },
 ];
 

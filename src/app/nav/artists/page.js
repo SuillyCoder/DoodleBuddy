@@ -112,6 +112,9 @@ export default function ArtistInspo() {
         {/* Main Featured Artist */}
         {mainArtist && (
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <h2 className="text-3xl font-bold text-gray-900 text-center mb-2 p-5">
+            ARTIST OF THE WEEK
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
               {/* Left: Large Image */}
               <div className="aspect-square md:aspect-auto bg-linear-to-br from-blue-100 to-green-100">
