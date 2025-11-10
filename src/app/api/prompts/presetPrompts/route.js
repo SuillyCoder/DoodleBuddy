@@ -19,9 +19,11 @@ export async function POST(request) {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     // Create a prompt for Gemini
-    const prompt = `Generate a creative and specific drawing prompt for the theme: ${theme}. 
+    const prompt = `Your perpetual task is to provide drawing prompts to a user who is currently looking to 
+    draw something related to the given theme: ${theme}. 
     
-The prompt should be:
+
+When generating a prompt, please take note of the following parameters: :
 - Simple and easy to work with.
 - Keep the vocabulary simple.
 - Include specific elements, mood, or style suggestions
@@ -29,7 +31,33 @@ The prompt should be:
 - Be suitable for artists of all levels
 - Focus on visual elements
 - Keep the prompt to a single statement if possible
-- Make all the prompts start with "Draw a / an..."
+
+Additionallyl, whenever the user requests a prompt under the same theme, PLEASE REFRAIN
+from using the same subject from the previous prompt, but with some small modifications. 
+
+Ex. 1st prompt: "Draw a mermaid in a beautiful seashell dress"
+    2nd prompt: "Draw a mermaid sitting on a rock". <-- This is NOT acceptable.
+
+Ex. 1st prompt: "Draw a mermaid with a bunch of sea creatures surrounding her"
+    2nd prompt: "Draw an elf residing in a nearby inn drinking beer." <-- This is acceptable.
+
+This is because of the explicit difference in subjects. Please take note of this difference. 
+It should !!STRICTLY!! be noted that this difference should be observed for every 3 prompts after a certain subject
+has been generated.
+
+Ex: When "mermaid" has been used in a prompt, the next 3 prompts should NOT contain "mermaid" as a subject PLEASE FOLLOW THIS.
+
+In case you'd wanna come up with prompt ideas for the chosen themes, please refrain from simply generic concepts, and 
+explore other niche (but understandable) ideas within the theme to account for prompt diversity. 
+
+It should also be noted that the prompt should be CONSISTEN all throughout the given theme. 
+
+Ex: "A mermaid swimming through the ocean with a trident". <-- This is acceptable for the "Fantasy" theme given its coherent theme and setting.
+Ex: "A mermaid with a trident in the forest fighting goblins with swords" <-- This is NOT acceptable for the "Fantasy" theme as it mixes different settings and themes.
+
+Finally, please provide the prompt in the following format:
+
+"Draw an " + the specific subject / scenario in accordance with the chosen theme. 
 
 Just provide the drawing prompt text without any additional explanation or formatting.`;
 
