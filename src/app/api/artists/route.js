@@ -38,7 +38,7 @@ const artstationArtistsPool = [
     artstationUrl: 'https://www.artstation.com/mischeviouslittleelf',
     imageUrl: '/artistAssets/artStation/profilePreview/Even_Amundsen.jpg',
     description: 'Norwegian artist creating whimsical fantasy illustrations with playful characters and imaginative worlds. Her distinctive style combines soft textures with vibrant storytelling that captures childlike wonder.',
-    previewImage: '/artistAssets/artStation/artPreview/Even_Amundsen_Prev.jpg',
+    previewImage: '/artistAssets/artStation/artPreview/Even_Amundsen_Prev.webp',
   },
   {
     name: 'Anna Podedworna',
@@ -86,10 +86,10 @@ const artstationArtistsPool = [
 },
 {
   name: 'Wenjun Lin',
-  artstationUrl: 'https://www.artstation.com/wenjunlin',
+  artstationUrl: 'https://www.artstation.com/junc',
   imageUrl: '/artistAssets/artStation/profilePreview/Wenjun_Lin.jpg',
   description: 'Senior concept artist at Blizzard Entertainment creating epic fantasy characters and creatures. Specializes in detailed armor designs and dynamic action poses with masterful understanding of anatomy and form.',
-  previewImage: '/artistAssets/artStation/artPreview/Wenjun_Lin_Prev.jpg',
+  previewImage: '/artistAssets/artStation/artPreview/Wenjun_Lin_Prev.webp',
 },
 {
   name: 'Karla Ortiz',
@@ -100,21 +100,21 @@ const artstationArtistsPool = [
 },
 {
   name: 'Tan Zhi Hui',
-  artstationUrl: 'https://www.artstation.com/kuroe',
+  artstationUrl: 'https://www.artstation.com/kudaman',
   imageUrl: '/artistAssets/artStation/profilePreview/Tan_Zhi_Hui.jpg',
   description: 'Singapore-based artist specializing in character illustrations with painterly style and atmospheric backgrounds. Known for creating contemplative character moments with beautiful color harmonies and soft lighting.',
   previewImage: '/artistAssets/artStation/artPreview/Tan_Zhi_Hui_Prev.jpg',
 },
 {
   name: 'Yongjae Choi',
-  artstationUrl: 'https://www.artstation.com/yongjae',
+  artstationUrl: 'https://www.artstation.com/indus',
   imageUrl: '/artistAssets/artStation/profilePreview/Yongjae_Choi.jpg',
   description: 'Korean concept artist creating stylized characters with strong silhouettes and vibrant color schemes. His work features bold shapes and graphic design sensibilities that make characters instantly recognizable and memorable.',
   previewImage: '/artistAssets/artStation/artPreview/Yongjae_Choi_Prev.jpg',
 },
 {
   name: 'Zeronis',
-  artstationUrl: 'https://www.artstation.com/zeronis',
+  artstationUrl: 'https://www.artstation.com/zeronis-pk',
   imageUrl: '/artistAssets/artStation/profilePreview/Zeronis.jpg',
   description: 'Former Riot Games senior concept artist known for creating iconic League of Legends champion designs. Masters dynamic poses and fashionable character designs with impeccable sense of style and movement.',
   previewImage: '/artistAssets/artStation/artPreview/Zeronis_Prev.jpg',
@@ -127,8 +127,8 @@ const artstationArtistsPool = [
   previewImage: '/artistAssets/artStation/artPreview/Melanie_Delon_Prev.jpg',
 },
 {
-  name: 'Jinhwan(Paul) Ahn',
-  artstationUrl: 'https://www.artstation.com/0hn0',
+  name: 'Jeong-Hwan Paul Ahn',
+  artstationUrl: 'https://www.artstation.com/ahnjeonghwanp',
   imageUrl: '/artistAssets/artStation/profilePreview/Jinhwan_Ahn.jpg',
   description: 'Concept artist specializing in realistic character designs for games and film. Known for detailed costume designs and practical armor that balance fantasy aesthetics with believable functionality.',
   previewImage: '/artistAssets/artStation/artPreview/Jinhwan_Ahn_Prev.jpg',
@@ -142,10 +142,10 @@ const artstationArtistsPool = [
 },
 {
   name: 'Lap Pun Cheung',
-  artstationUrl: 'https://www.artstation.com/puncheung',
+  artstationUrl: 'https://www.artstation.com/lappuncheung',
   imageUrl: '/artistAssets/artStation/profilePreview/Lap_Pun_Cheung.jpg',
   description: 'Senior concept artist creating memorable character designs for AAA games. Specializes in creature design and fantasy characters with strong anatomical foundation and imaginative detail work.',
-  previewImage: '/artistAssets/artStation/artPreview/Lap_Pun_Cheung_Prev.jpg',
+  previewImage: '/artistAssets/artStation/artPreview/Lap_Pun_Cheung_Prev.webp',
 },
 {
   name: 'Ross Tran',
@@ -156,7 +156,7 @@ const artstationArtistsPool = [
 },
 {
   name: 'Svetlana Tigai',
-  artstationUrl: 'https://www.artstation.com/sutibaeu',
+  artstationUrl: 'https://www.artstation.com/tsevtka',
   imageUrl: '/artistAssets/artStation/profilePreview/Svetlana_Tigai.jpg',
   description: 'Ukrainian artist specializing in whimsical fantasy characters and creature design. Her soft, painterly style brings warmth and personality to every character with charming expressions and storytelling details.',
   previewImage: '/artistAssets/artStation/artPreview/Svetlana_Tigai_Prev.jpg',
@@ -170,7 +170,7 @@ const artstationArtistsPool = [
 },
 {
   name: 'Alexandra Fomina',
-  artstationUrl: 'https://www.artstation.com/alexgraph',
+  artstationUrl: 'https://www.artstation.com/moshimoshibe',
   imageUrl: '/artistAssets/artStation/profilePreview/Alexandra_Fomina.jpg',
   description: 'Character designer for animated films creating expressive cartoon-style characters. Her work features appealing shapes, strong poses, and personality-filled designs perfect for animation and children\'s media.',
   previewImage: '/artistAssets/artStation/artPreview/Alexandra_Fomina_Prev.jpg',
