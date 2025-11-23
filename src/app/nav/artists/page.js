@@ -21,7 +21,10 @@ export default function ArtistInspo() {
 
   const fetchArtists = async () => {
     try {
-      const response = await fetch('/api/artists');
+       const testDate = new URLSearchParams(window.location.search).get('testDate');
+      const url = testDate ? `/api/artists?testDate=${testDate}` : '/api/artists';
+
+      const response = await fetch(url)
       const data = await response.json();
       
       setArtstationArtists(data.artstationArtists);
@@ -109,7 +112,7 @@ export default function ArtistInspo() {
         onMouseEnter={() => setHoveredArtist(artist)}
         onMouseLeave={() => setHoveredArtist(null)}
       >
-        <div className="aspect-square w-full overflow-hidden bg-gradient-to-br from-blue-100 to-green-100">
+        <div className="aspect-square w-full overflow-hidden bg-linear-to-br from-blue-100 to-green-100">
           <img 
             src={artist.imageUrl}
             alt={`${artist.name}'s profile`}
@@ -142,8 +145,6 @@ export default function ArtistInspo() {
           </div>
         )}
       </div>
-
-      {/* Button now outside the card but inside the wrapper */}
       <div className="p-3 text-center">
         <a
           href={artist.artstationUrl}
@@ -172,7 +173,7 @@ export default function ArtistInspo() {
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
                 {/* Left: Large Image */}
-                <div className="aspect-square md:aspect-auto bg-gradient-to-br from-blue-100 to-green-100">
+                <div className="aspect-square md:aspect-auto bg-linear-to-br from-blue-100 to-green-100">
                   <img 
                     src={mainArtist.imageUrl}
                     alt={`${mainArtist.name}'s featured work`}

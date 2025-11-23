@@ -122,9 +122,9 @@ const artstationArtistsPool = [
 {
   name: 'Mélanie Delon',
   artstationUrl: 'https://www.artstation.com/melaniedelon',
-  imageUrl: '/artistAssets/artStation/profilePreview/Melanie_Delon.jpg',
+  imageUrl: '/artistAssets/artStation/profilePreview/Mélanie_Delon.jpg',
   description: 'French digital painter renowned for ethereal fantasy portraits with dreamy atmospheres. Creates mystical characters with delicate features and romantic lighting that evoke fairy tale enchantment.',
-  previewImage: '/artistAssets/artStation/artPreview/Melanie_Delon_Prev.jpg',
+  previewImage: '/artistAssets/artStation/artPreview/Mélanie_Delon_Prev.jpg',
 },
 {
   name: 'Jeong-Hwan Paul Ahn',
@@ -196,18 +196,6 @@ function getDailySeed() {
 }
 
 /**
- * Get weekly seed (changes every Monday)
- */
-function getWeeklySeed() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const startOfYear = new Date(year, 0, 1);
-  const days = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
-  const weekNumber = Math.ceil((days + startOfYear.getDay() + 1) / 7);
-  return `${year}-W${weekNumber}`;
-}
-
-/**
  * Seeded random number generator
  */
 function seededRandom(seed) {
@@ -244,7 +232,6 @@ export async function GET(request) {
       artstationArtists: dailyArtists,
       mainArtist,
       dailySeed: getDailySeed(),
-      weekSeed: getWeeklySeed(),
     });
   } catch (error) {
     console.error('API Error:', error);
