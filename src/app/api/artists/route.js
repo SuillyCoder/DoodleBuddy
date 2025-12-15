@@ -129,9 +129,9 @@ const artstationArtistsPool = [
 {
   name: 'Jeong-Hwan Paul Ahn',
   artstationUrl: 'https://www.artstation.com/ahnjeonghwanp',
-  imageUrl: '/artistAssets/artStation/profilePreview/Jinhwan_Ahn.jpg',
+  imageUrl: '/artistAssets/artStation/profilePreview/Jeong-Hwan_Paul_Ahn.jpg',
   description: 'Concept artist specializing in realistic character designs for games and film. Known for detailed costume designs and practical armor that balance fantasy aesthetics with believable functionality.',
-  previewImage: '/artistAssets/artStation/artPreview/Jinhwan_Ahn_Prev.jpg',
+  previewImage: '/artistAssets/artStation/artPreview/Jeong-Hwan_Paul_Ahn_Prev.jpg',
 },
 {
   name: 'Guweiz',

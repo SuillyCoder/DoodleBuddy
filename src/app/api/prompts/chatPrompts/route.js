@@ -4,6 +4,27 @@ import { NextResponse } from 'next/server';
 // Initialize Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+async function retryWithBackoff(fn, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const isRateLimitError = 
+        error.message?.includes('429') || 
+        error.message?.includes('RESOURCE_EXHAUSTED') ||
+        error.message?.includes('quota');
+
+      if (isRateLimitError && i < maxRetries - 1) {
+        const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
+        console.log(`Rate limit hit, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 export async function POST(request) {
   try {
     const { messages, chatId, userId } = await request.json();
@@ -72,7 +93,9 @@ Example responses:
     const fullPrompt = `${systemPrompt}\n\nConversation:\n${conversationHistory}\n\nAssistant:`;
 
     // Generate response
-    const result = await model.generateContent(fullPrompt);
+     const result = await retryWithBackoff(async () => {
+      return await model.generateContent(fullPrompt);
+    });
     const response = await result.response;
     const aiMessage = response.text().trim();
 
@@ -93,9 +116,12 @@ Example responses:
       );
     }
 
-    if (error.message?.includes('quota') || error.message?.includes('limit')) {
+    if (error.message?.includes('quota') || 
+        error.message?.includes('limit') || 
+        error.message?.includes('429') ||
+        error.message?.includes('RESOURCE_EXHAUSTED')) {
       return NextResponse.json(
-        { error: 'API usage limit reached. Please try again later.' },
+        { error: 'API usage limit reached. Please try again in a few minutes.' },
         { status: 429 }
       );
     }

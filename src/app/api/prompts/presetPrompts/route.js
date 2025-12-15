@@ -4,6 +4,27 @@ import { NextResponse } from 'next/server';
 // Initialize Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+async function retryWithBackoff(fn, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const isRateLimitError = 
+        error.message?.includes('429') || 
+        error.message?.includes('RESOURCE_EXHAUSTED') ||
+        error.message?.includes('quota');
+
+      if (isRateLimitError && i < maxRetries - 1) {
+        const delay = Math.pow(2, i) * 1000; // 1s, 2s, 4s
+        console.log(`Rate limit hit, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 export async function POST(request) {
   try {
     const { theme } = await request.json();
@@ -60,7 +81,9 @@ Finally, please provide the prompt in the following format:
 Just provide the drawing prompt text without any additional explanation or formatting.`;
 
     // Generate content
-    const result = await model.generateContent(prompt);
+    const result = await retryWithBackoff(async () => {
+      return await model.generateContent(prompt);
+    });
     const response = await result.response;
     const generatedPrompt = response.text().trim();
 
