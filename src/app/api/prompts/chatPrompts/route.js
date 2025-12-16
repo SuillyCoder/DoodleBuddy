@@ -40,7 +40,7 @@ export async function POST(request) {
     // Guests will have userId: 'guest'
 
     // Initialize the model
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // FIXED: Generate title only if this is the first USER message
     let title = null;

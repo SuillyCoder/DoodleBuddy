@@ -37,7 +37,7 @@ export async function POST(request) {
     }
 
     // Initialize the model
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // Create a prompt for Gemini
     const prompt = `Your perpetual task is to provide drawing prompts to a user who is currently looking to 
